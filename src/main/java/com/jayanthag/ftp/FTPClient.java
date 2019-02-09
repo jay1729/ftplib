@@ -2,7 +2,7 @@ package com.jayanthag.ftp;
 
 import java.io.*;
 import java.net.*;
-import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 
 import com.jayanthag.ftp.Constants.CREDENTIALS;
 
@@ -10,7 +10,7 @@ public class FTPClient {
 
     private String host;
     private int port;
-    private Socket socket;
+    private Socket controlSocket;
     private InputStreamReader inputReader;
     private PrintWriter outputWriter;
     private String username;
@@ -43,9 +43,10 @@ public class FTPClient {
     }
 
     public ServerResponse connect() throws IOException{
-        socket = new Socket(host, port);
-        inputReader = new InputStreamReader(socket.getInputStream());
-        outputWriter = new PrintWriter(socket.getOutputStream(), true);
+        controlSocket = new Socket(host, port);
+        System.out.println("YYY"+controlSocket.getLocalSocketAddress()+" "+controlSocket.getPort());
+        inputReader = new InputStreamReader(controlSocket.getInputStream());
+        outputWriter = new PrintWriter(controlSocket.getOutputStream(), true);
         return ServerResponse.getResponseFromString(readStringInput());
     }
 
@@ -62,8 +63,36 @@ public class FTPClient {
         return serverResponse;
     }
 
+    private ServerResponse sendPort(String address) throws IOException{
+        String[] s = address.split(":", 2);
+        String host = s[0];
+        host = host.replace('.', ',');
+        int port = Integer.valueOf(s[1]);
+        String addressInfo = host.substring(1) + ',' + String.valueOf(port/256) + ',' + String.valueOf(port%256);
+        return sendCommand("PORT "+addressInfo);
+    }
+
+    private void sendPort(ServerSocket serverSocket) throws IOException{
+        ServerResponse response = sendPort(serverSocket.getLocalSocketAddress().toString());
+        System.out.println(response.responseCode+" "+response.responseMessage);
+    }
+
+    // list the contents of current working directory
+    public ArrayList<String> ls() throws IOException{
+        System.out.println("127.0.0.1".split(".", 2)[0]);
+        ServerResponse response = sendCommand("TYPE A");
+        System.out.println(response.responseCode+" "+response.responseMessage);
+        response = sendCommand("PWD");
+        System.out.println(response.responseCode+" "+response.responseMessage);
+        response = sendCommand("LIST");
+        System.out.println(response.responseCode+" "+response.responseMessage);
+        DataSocketController dataSocketController = new DataSocketController(controlSocket.getInetAddress());
+        sendPort(dataSocketController.getSocket());
+        return null;
+    }
+
     public void stopClient() throws IOException{
-        socket.close();
+        controlSocket.close();
     }
 
     private void throwExceptionAndExit(Exception e) throws Exception{
