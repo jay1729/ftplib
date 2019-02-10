@@ -8,4 +8,13 @@ public class Exceptions {
         }
     }
 
+    /*
+        Generic exception raised when return code is unexpected
+     */
+    public static class ServerResponseException extends Exception{
+        public ServerResponseException(String response){
+            super("this reply was not expected from server: "+response);
+        }
+    }
+
 }
