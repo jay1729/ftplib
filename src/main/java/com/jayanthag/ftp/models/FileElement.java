@@ -1,6 +1,8 @@
 package com.jayanthag.ftp.models;
 
 
+import com.jayanthag.ftp.Exceptions;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -14,6 +16,7 @@ public class FileElement {
     public Date lastModified;
     public String name;
     public ArrayList<FileElement> children;
+    public FileElement parent;
 
     public static char[] permChoices = new char[]{'a', 'c', 'd', 'e', 'f', 'l', 'm', 'p', 'r', 'w'};
 
@@ -24,6 +27,11 @@ public class FileElement {
 
     public static String[] TypeChoices(){
         return new String[]{TypeChoices.DIRECTORY, TypeChoices.FILE};
+    }
+
+    public static boolean isTypeAllowed(String type){
+        if(type.contentEquals(TypeChoices.DIRECTORY)) return true;
+        return type.contentEquals(TypeChoices.FILE);
     }
 
     public static int getPermIntFromChar(char perm){
@@ -56,6 +64,8 @@ public class FileElement {
         return formatter.parse(date);
     }
 
+    public FileElement(){}
+
     public FileElement(String type, int perm, long size,
                        Date lastModified, String name){
         this.type = type;
@@ -74,6 +84,27 @@ public class FileElement {
     public FileElement(String type, String perm, String size,
                        String lastModified, String name) throws ParseException{
         this(type, getPermIntFromString(perm), Long.valueOf(size), getDateFromString(lastModified), name);
+    }
+
+    public void setPerm(String perm){
+        this.perm = getPermIntFromString(perm);
+    }
+
+    public void setLastModified(String lastModified) throws ParseException{
+        this.lastModified = getDateFromString(lastModified);
+    }
+
+    public void setSize(String size){
+        this.size = Long.valueOf(size);
+    }
+
+    public void setName(String name){
+        this.name = name;
+    }
+
+    public void setType(String type) throws Exceptions.FileTypeException {
+        if(!isTypeAllowed(type)) throw new Exceptions.FileTypeException("Unexpected File Type");
+        this.type = type;
     }
 
 }

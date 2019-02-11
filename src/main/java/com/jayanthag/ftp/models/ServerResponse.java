@@ -1,4 +1,4 @@
-package com.jayanthag.ftp;
+package com.jayanthag.ftp.models;
 
 public class ServerResponse {
 

@@ -24,6 +24,10 @@ public class DataSocketController {
         StringBuilder builder = new StringBuilder();
         int currentChar = inputReader.read();
         while ((currentChar != -1) && (currentChar != 10)){
+            if(currentChar == 13){
+                inputReader.read();
+                break;
+            }
             builder.append((char) currentChar);
             currentChar = inputReader.read();
         }

@@ -5,6 +5,10 @@ import java.net.*;
 import java.util.ArrayList;
 
 import com.jayanthag.ftp.Constants.CREDENTIALS;
+import com.jayanthag.ftp.models.FileElement;
+import com.jayanthag.ftp.models.ServerResponse;
+import com.jayanthag.ftp.parsers.MLSDParser;
+import com.jayanthag.ftp.parsers.Parser;
 
 public class FTPClient {
 
@@ -107,15 +111,21 @@ public class FTPClient {
         return sendFinalCommand("CWD "+dirName);
     }
 
+    protected Parser getParserForMLSD(){
+        return new MLSDParser();
+    }
+
     // list the contents of current working directory
-    public ArrayList<String> ls() throws IOException, Exceptions.ServerResponseException {
+    public ArrayList<FileElement> ls() throws IOException, Exceptions.ServerResponseException {
         sendFinalCommand("TYPE A");
         DataSocketController dataSocketController = new DataSocketController(controlSocket.getInetAddress());
         sendPort(dataSocketController.getSocket());
         sendPreliminaryCommand("MLSD");
-        ArrayList<String> output = dataSocketController.getDataAsStrings();
+        ArrayList<String> lines = dataSocketController.getDataAsStrings();
         dataSocketController.closeSocket();
         expectFinalReply();
+        Parser parser = getParserForMLSD();
+        ArrayList<FileElement> output = parser.parse(lines);
         return output;
     }
 
