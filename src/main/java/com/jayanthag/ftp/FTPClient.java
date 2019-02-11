@@ -42,21 +42,22 @@ public class FTPClient {
         return ServerResponse.getResponseFromString(responseString);
     }
 
-    private void sendVoidCommand(String command, int expectedReplyCode) throws IOException, Exceptions.ServerResponseException {
+    private ServerResponse sendVoidCommand(String command, int expectedReplyCode) throws IOException, Exceptions.ServerResponseException {
         ServerResponse serverResponse = sendCommand(command);
         if((serverResponse.responseCode/100) != expectedReplyCode) throw new Exceptions.ServerResponseException(serverResponse.responseMessage);
+        return serverResponse;
     }
 
-    private void sendFinalCommand(String command) throws IOException, Exceptions.ServerResponseException {
-        sendVoidCommand(command, 2);
+    private ServerResponse sendFinalCommand(String command) throws IOException, Exceptions.ServerResponseException {
+        return sendVoidCommand(command, 2);
     }
 
-    private void sendPreliminaryCommand(String command) throws IOException, Exceptions.ServerResponseException {
-        sendVoidCommand(command, 1);
+    private ServerResponse sendPreliminaryCommand(String command) throws IOException, Exceptions.ServerResponseException {
+        return sendVoidCommand(command, 1);
     }
 
-    private void sendIntermediateCommand(String command) throws IOException, Exceptions.ServerResponseException {
-        sendVoidCommand(command, 3);
+    private ServerResponse sendIntermediateCommand(String command) throws IOException, Exceptions.ServerResponseException {
+        return sendVoidCommand(command, 3);
     }
 
     private ServerResponse expectFinalReply() throws IOException, Exceptions.ServerResponseException{
@@ -98,12 +99,20 @@ public class FTPClient {
         sendPort(serverSocket.getLocalSocketAddress().toString());
     }
 
+    public String pwd() throws IOException, Exceptions.ServerResponseException {
+        return sendFinalCommand("PWD").responseMessage;
+    }
+
+    public ServerResponse cwd(String dirName) throws IOException, Exceptions.ServerResponseException{
+        return sendFinalCommand("CWD "+dirName);
+    }
+
     // list the contents of current working directory
     public ArrayList<String> ls() throws IOException, Exceptions.ServerResponseException {
         sendFinalCommand("TYPE A");
         DataSocketController dataSocketController = new DataSocketController(controlSocket.getInetAddress());
         sendPort(dataSocketController.getSocket());
-        sendPreliminaryCommand("LIST");
+        sendPreliminaryCommand("MLSD");
         ArrayList<String> output = dataSocketController.getDataAsStrings();
         dataSocketController.closeSocket();
         expectFinalReply();
