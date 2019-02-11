@@ -59,9 +59,10 @@ public class FTPClient {
         sendVoidCommand(command, 3);
     }
 
-    private void expectFinalReply() throws IOException, Exceptions.ServerResponseException{
+    private ServerResponse expectFinalReply() throws IOException, Exceptions.ServerResponseException{
         ServerResponse serverResponse = ServerResponse.getResponseFromString(readStringInput());
         if((serverResponse.responseCode/100) != 2) throw new Exceptions.ServerResponseException(serverResponse.responseMessage);
+        return serverResponse;
     }
 
     public ServerResponse connect() throws IOException{
@@ -107,6 +108,15 @@ public class FTPClient {
         dataSocketController.closeSocket();
         expectFinalReply();
         return output;
+    }
+
+    public ServerResponse download(String fileName) throws IOException, Exceptions.ServerResponseException {
+        sendFinalCommand("TYPE I");
+        DataSocketController dataSocketController = new DataSocketController(controlSocket.getInetAddress());
+        sendPort(dataSocketController.getSocket());
+        sendPreliminaryCommand("RETR "+fileName);
+        dataSocketController.saveBinaryData(fileName);
+        return expectFinalReply();
     }
 
     public void stopClient() throws IOException{
