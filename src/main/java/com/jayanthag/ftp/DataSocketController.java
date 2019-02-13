@@ -11,9 +11,16 @@ public class DataSocketController {
     private InputStreamReader inputReader;
     private BufferedInputStream binaryInputStream;
     private BufferedOutputStream binaryOutputStream;
+    protected String downloadDir;
 
     public DataSocketController(InetAddress inetAddress) throws IOException {
         socket = new ServerSocket(0, 0, inetAddress);
+        this.downloadDir = "";
+    }
+
+    public DataSocketController(InetAddress inetAddress, String downloadDir) throws IOException {
+        socket = new ServerSocket(0, 0, inetAddress);
+        this.downloadDir = downloadDir;
     }
 
     public ServerSocket getSocket(){
@@ -61,7 +68,7 @@ public class DataSocketController {
     public void saveBinaryData(String fileName) throws IOException{
         try {
             incomingSocket = socket.accept();
-            binaryOutputStream = new BufferedOutputStream(new FileOutputStream(fileName));
+            binaryOutputStream = new BufferedOutputStream(new FileOutputStream(downloadDir+fileName));
             binaryInputStream = new BufferedInputStream(incomingSocket.getInputStream());
             readAndStoreBinary();
         }finally {

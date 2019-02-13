@@ -19,6 +19,7 @@ public class FTPClient {
     private PrintWriter outputWriter;
     private String username;
     private String password;
+    protected String downloadDir;
 
     public FTPClient(String host, int port){
         this.host = host;
@@ -129,12 +130,26 @@ public class FTPClient {
         return output;
     }
 
-    public ServerResponse download(String fileName) throws IOException, Exceptions.ServerResponseException {
+    protected String parseFileName(String fullPath){
+        String[] path = fullPath.split("/");
+        return path[path.length-1];
+    }
+
+    public void setDownloadDir(String downloadDir){
+        this.downloadDir = downloadDir;
+    }
+
+    public ServerResponse download(String filePath, String downloadDir) throws IOException, Exceptions.ServerResponseException {
+        setDownloadDir(downloadDir);
+        return download(filePath);
+    }
+
+    public ServerResponse download(String filePath) throws IOException, Exceptions.ServerResponseException {
         sendFinalCommand("TYPE I");
-        DataSocketController dataSocketController = new DataSocketController(controlSocket.getInetAddress());
+        DataSocketController dataSocketController = new DataSocketController(controlSocket.getInetAddress(), downloadDir);
         sendPort(dataSocketController.getSocket());
-        sendPreliminaryCommand("RETR "+fileName);
-        dataSocketController.saveBinaryData(fileName);
+        sendPreliminaryCommand("RETR "+filePath);
+        dataSocketController.saveBinaryData(parseFileName(filePath));
         return expectFinalReply();
     }
 
