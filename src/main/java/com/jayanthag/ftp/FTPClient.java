@@ -10,7 +10,7 @@ import com.jayanthag.ftp.models.ServerResponse;
 import com.jayanthag.ftp.parsers.MLSDParser;
 import com.jayanthag.ftp.parsers.Parser;
 
-public class FTPClient {
+public class FTPClient implements FileManager{
 
     private String host;
     private int port;
@@ -20,6 +20,7 @@ public class FTPClient {
     private String username;
     private String password;
     protected String downloadDir;
+    protected String currentWorkingDir;
 
     public FTPClient(String host, int port){
         this.host = host;
@@ -104,8 +105,29 @@ public class FTPClient {
         sendPort(serverSocket.getLocalSocketAddress().toString());
     }
 
+    protected void setCWD(String cwdMsg){
+        StringBuilder builder = new StringBuilder();
+        int size = cwdMsg.length();
+        boolean startRecording = false;
+        for(int i=0;i<size;i++){
+            if(startRecording){
+                if(cwdMsg.charAt(i) == '"') break;
+                builder.append(cwdMsg.charAt(i));
+            }
+            if(cwdMsg.charAt(i) == '"') startRecording = true;
+        }
+        currentWorkingDir = builder.toString();
+    }
+
+    protected void loadCWD() throws IOException, Exceptions.ServerResponseException {
+        ServerResponse serverResponse = sendFinalCommand("PWD");
+        setCWD(serverResponse.responseMessage);
+    }
+
     public String pwd() throws IOException, Exceptions.ServerResponseException {
-        return sendFinalCommand("PWD").responseMessage;
+        ServerResponse response = sendFinalCommand("PWD");
+        setCWD(response.responseMessage);
+        return response.responseMessage;
     }
 
     public ServerResponse cwd(String dirName) throws IOException, Exceptions.ServerResponseException{
@@ -113,11 +135,12 @@ public class FTPClient {
     }
 
     protected Parser getParserForMLSD(){
-        return new MLSDParser();
+        return new MLSDParser(this);
     }
 
     // list the contents of current working directory
     public ArrayList<FileElement> ls() throws IOException, Exceptions.ServerResponseException {
+        loadCWD();
         sendFinalCommand("TYPE A");
         DataSocketController dataSocketController = new DataSocketController(controlSocket.getInetAddress());
         sendPort(dataSocketController.getSocket());
@@ -126,6 +149,7 @@ public class FTPClient {
         dataSocketController.closeSocket();
         expectFinalReply();
         Parser parser = getParserForMLSD();
+        parser.setCWD(currentWorkingDir);
         ArrayList<FileElement> output = parser.parse(lines);
         return output;
     }
@@ -145,6 +169,7 @@ public class FTPClient {
     }
 
     public ServerResponse download(String filePath) throws IOException, Exceptions.ServerResponseException {
+        loadCWD();
         sendFinalCommand("TYPE I");
         DataSocketController dataSocketController = new DataSocketController(controlSocket.getInetAddress(), downloadDir);
         sendPort(dataSocketController.getSocket());

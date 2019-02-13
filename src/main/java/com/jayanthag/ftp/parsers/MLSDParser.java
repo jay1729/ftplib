@@ -1,6 +1,7 @@
 package com.jayanthag.ftp.parsers;
 
 import com.jayanthag.ftp.Exceptions;
+import com.jayanthag.ftp.FileManager;
 import com.jayanthag.ftp.models.FileElement;
 
 import java.lang.reflect.InvocationTargetException;
@@ -19,6 +20,12 @@ public class MLSDParser implements Parser{
     protected String currentValue;
     protected ArrayList<FileElement> output;
     protected String currentLine;
+    protected String path;
+    protected FileManager fileManager;
+
+    public MLSDParser(FileManager fileManager){
+        this.fileManager = fileManager;
+    }
 
     public void perm(){
         currentElement.setPerm(currentValue);
@@ -59,7 +66,8 @@ public class MLSDParser implements Parser{
 
     protected void clearForCurrentLine(){
         currentLine = null;
-        currentElement = new FileElement();
+        currentElement = new FileElement(fileManager);
+        currentElement.setPath(path);
         currentAttribute = null;
         currentValue = null;
     }
@@ -94,6 +102,11 @@ public class MLSDParser implements Parser{
         int size = mlsdOutput.size();
         for(int i=0;i<size;i++) parseLine(i);
         return output;
+    }
+
+    @Override
+    public void setCWD(String path) {
+        this.path = path;
     }
 
 }

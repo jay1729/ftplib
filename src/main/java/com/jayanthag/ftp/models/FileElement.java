@@ -2,11 +2,15 @@ package com.jayanthag.ftp.models;
 
 
 import com.jayanthag.ftp.Exceptions;
+import com.jayanthag.ftp.FileManager;
 
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class FileElement {
 
@@ -17,6 +21,8 @@ public class FileElement {
     public String name;
     public ArrayList<FileElement> children;
     public FileElement parent;
+    public String path;
+    protected FileManager fileManager;
 
     public static class PERMISSIONS {
         public static int a = 1;
@@ -81,26 +87,29 @@ public class FileElement {
         return formatter.parse(date);
     }
 
-    public FileElement(){}
+    public FileElement(FileManager fileManager){
+        this.fileManager = fileManager;
+    }
 
     public FileElement(String type, int perm, long size,
-                       Date lastModified, String name){
+                       Date lastModified, String name, String path){
         this.type = type;
         this.perm = perm;
         this.size = size;
         this.lastModified = lastModified;
         this.name = name;
+        this.path = path;
     }
 
     public FileElement(String type, int perm, long size,
-                       Date lastModified, String name, ArrayList<FileElement> children){
-        this(type, perm, size, lastModified, name);
+                       Date lastModified, String name, String path, ArrayList<FileElement> children){
+        this(type, perm, size, lastModified, name, path);
         this.children = children;
     }
 
     public FileElement(String type, String perm, String size,
-                       String lastModified, String name) throws ParseException{
-        this(type, getPermIntFromString(perm), Long.valueOf(size), getDateFromString(lastModified), name);
+                       String lastModified, String name, String path) throws ParseException{
+        this(type, getPermIntFromString(perm), Long.valueOf(size), getDateFromString(lastModified), name, path);
     }
 
     public void setPerm(String perm){
@@ -122,6 +131,71 @@ public class FileElement {
     public void setType(String type) throws Exceptions.FileTypeException {
         if(!isTypeAllowed(type)) throw new Exceptions.FileTypeException("Unexpected File Type");
         this.type = type;
+    }
+
+    public void setPath(String path){
+        this.path = path;
+    }
+
+    public FileElement getParent(){
+        return parent;
+    }
+
+    public FileElement getRoot(){
+        FileElement parent = getParent();
+        if(parent == null) return this;
+        return parent.getRoot();
+    }
+
+    public ArrayList<FileElement> getChildren(){
+        return children;
+    }
+
+    public ArrayList<FileElement> searchCurrentFolder() throws IOException, Exceptions.ServerResponseException, Exceptions.FileTypeException {
+        if(type.contentEquals(TypeChoices.FILE)) throw new Exceptions.FileTypeException("Not a Folder");
+        fileManager.cwd(this.path+"/"+this.name);
+        return fileManager.ls();
+    }
+
+    public void loadTree(String regex) throws IOException, Exceptions.ServerResponseException, Exceptions.FileTypeException{
+        if(type.contentEquals(TypeChoices.FILE)) return;
+        children = new ArrayList<>();
+        ArrayList<FileElement> filesList = searchCurrentFolder();
+        Pattern pattern = Pattern.compile(regex);
+        for(FileElement fileElement : filesList){
+            Matcher matcher = pattern.matcher(fileElement.name);
+            if(matcher.matches()) children.add(fileElement);
+        }
+        for(FileElement child : children){
+            child.loadTree(regex);
+        }
+    }
+
+    public void loadTree() throws IOException, Exceptions.ServerResponseException, Exceptions.FileTypeException{
+        loadTree(".*");
+    }
+
+    protected String getFileTree(String regex, String indent, boolean reloadTree) throws IOException, Exceptions.ServerResponseException, Exceptions.FileTypeException{
+        if(reloadTree) loadTree(regex);
+        StringBuilder builder = new StringBuilder();
+        builder.append(name);
+        if(children == null) return builder.toString();
+        for(FileElement child : children){
+            builder.append("\n");
+            builder.append(indent);
+            builder.append(" ");
+            builder.append(child.getFileTree(".*", indent+" ", false));
+        }
+        builder.append("\n");
+        return builder.toString();
+    }
+
+    public String getFileTree(String regex, boolean reloadTree) throws IOException, Exceptions.ServerResponseException, Exceptions.FileTypeException{
+        return getFileTree(regex, "", reloadTree);
+    }
+
+    public String getFileTree(boolean reloadTree) throws IOException, Exceptions.ServerResponseException, Exceptions.FileTypeException{
+        return getFileTree(".*", reloadTree);
     }
 
 }
