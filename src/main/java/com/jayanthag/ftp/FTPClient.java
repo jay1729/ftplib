@@ -5,29 +5,41 @@ import java.net.*;
 import java.util.ArrayList;
 
 import com.jayanthag.ftp.Constants.CREDENTIALS;
+import com.jayanthag.ftp.models.FTPSocket;
 import com.jayanthag.ftp.models.FileElement;
 import com.jayanthag.ftp.models.ServerResponse;
 import com.jayanthag.ftp.parsers.MLSDParser;
 import com.jayanthag.ftp.parsers.Parser;
 
-public class FTPClient implements FileManager{
+public class FTPClient implements FileManager, SendCommand{
 
     private String host;
     private int port;
     private Socket controlSocket;
     private InputStreamReader inputReader;
     private PrintWriter outputWriter;
-    private String username;
-    private String password;
+    protected String username;
+    protected String password;
     protected String downloadDir;
     protected String currentWorkingDir;
+    protected boolean passiveMode;
 
     public FTPClient(String host, int port){
         this.host = host;
         this.port = port;
+        passiveMode = false;
     }
 
-    private String readStringInput() throws IOException{
+    public FTPClient(String host, int port, boolean passiveMode){
+        this(host, port);
+        this.passiveMode = false;
+    }
+
+    public void setPassiveMode(boolean passiveMode){
+        this.passiveMode = passiveMode;
+    }
+
+    public String readStringInput() throws IOException{
         StringBuilder builder = new StringBuilder();
         int currentChar = inputReader.read();
         while ((currentChar != -1) && (currentChar != 10)){
@@ -42,7 +54,7 @@ public class FTPClient implements FileManager{
         outputWriter.flush();
     }
 
-    private ServerResponse sendCommand(String command) throws IOException{
+    public ServerResponse sendCommand(String command) throws IOException{
         _sendCommand(command);
         String responseString = readStringInput();
         return ServerResponse.getResponseFromString(responseString);
@@ -141,22 +153,12 @@ public class FTPClient implements FileManager{
     // list the contents of current working directory
     public ArrayList<FileElement> ls() throws IOException, Exceptions.ServerResponseException {
         loadCWD();
-        sendFinalCommand("TYPE A");
-        DataSocketController dataSocketController = new DataSocketController(controlSocket.getInetAddress());
-        sendPort(dataSocketController.getSocket());
-        sendPreliminaryCommand("MLSD");
-        ArrayList<String> lines = dataSocketController.getDataAsStrings();
-        dataSocketController.closeSocket();
-        expectFinalReply();
+        DataSocketController dataSocketController = new DataSocketController(this,
+                controlSocket.getInetAddress(), passiveMode);
+        ArrayList<String> lines = dataSocketController.getDataAsStrings("MLSD");
         Parser parser = getParserForMLSD();
         parser.setCWD(currentWorkingDir);
-        ArrayList<FileElement> output = parser.parse(lines);
-        return output;
-    }
-
-    protected String parseFileName(String fullPath){
-        String[] path = fullPath.split("/");
-        return path[path.length-1];
+        return parser.parse(lines);
     }
 
     public void setDownloadDir(String downloadDir){
@@ -170,12 +172,9 @@ public class FTPClient implements FileManager{
 
     public ServerResponse download(String filePath) throws IOException, Exceptions.ServerResponseException {
         loadCWD();
-        sendFinalCommand("TYPE I");
-        DataSocketController dataSocketController = new DataSocketController(controlSocket.getInetAddress(), downloadDir);
-        sendPort(dataSocketController.getSocket());
-        sendPreliminaryCommand("RETR "+filePath);
-        dataSocketController.saveBinaryData(parseFileName(filePath));
-        return expectFinalReply();
+        DataSocketController dataSocketController = new DataSocketController(this, controlSocket.getInetAddress(),
+                passiveMode, downloadDir);
+        return dataSocketController.saveBinaryData(filePath);
     }
 
     public void stopClient() throws IOException{
