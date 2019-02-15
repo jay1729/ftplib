@@ -43,7 +43,6 @@ public class DataSocketController {
     }
 
     protected ServerResponse sendFinalCommand(String command) throws IOException, Exceptions.ServerResponseException {
-        ServerResponse serverResponse = ftpClient.sendCommand(command);
         return sendVoidCommand(command, 2);
     }
 

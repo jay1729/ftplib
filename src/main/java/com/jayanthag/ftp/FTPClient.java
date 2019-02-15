@@ -23,6 +23,7 @@ public class FTPClient implements FileManager, SendCommand{
     protected String downloadDir;
     protected String currentWorkingDir;
     protected boolean passiveMode;
+    protected boolean debugMode;
 
     public FTPClient(String host, int port){
         this.host = host;
@@ -32,11 +33,15 @@ public class FTPClient implements FileManager, SendCommand{
 
     public FTPClient(String host, int port, boolean passiveMode){
         this(host, port);
-        this.passiveMode = false;
+        this.passiveMode = passiveMode;
     }
 
     public void setPassiveMode(boolean passiveMode){
         this.passiveMode = passiveMode;
+    }
+
+    public void setDebugMode(boolean debugMode){
+        this.debugMode = debugMode;
     }
 
     public String readStringInput() throws IOException{
@@ -46,10 +51,13 @@ public class FTPClient implements FileManager, SendCommand{
             builder.append((char) currentChar);
             currentChar = inputReader.read();
         }
-        return builder.toString();
+        String output = builder.toString();
+        if(debugMode) System.out.println("Response - "+output);
+        return output;
     }
 
     private void _sendCommand(String command){
+        if(debugMode) System.out.println("Sent - "+command);
         outputWriter.print(command+Constants.CRLF);
         outputWriter.flush();
     }
