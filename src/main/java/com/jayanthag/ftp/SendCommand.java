@@ -9,4 +9,5 @@ public interface SendCommand {
     public ServerResponse sendCommand(String command) throws IOException;
 
     public String readStringInput() throws IOException;
+
 }

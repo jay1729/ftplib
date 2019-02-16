@@ -23,4 +23,10 @@ public class Exceptions {
         }
     }
 
+    public static class FileException extends Exception{
+        public FileException(String errorMessage){
+            super(errorMessage);
+        }
+    }
+
 }

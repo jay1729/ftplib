@@ -23,6 +23,7 @@ public class FileElement {
     public FileElement parent;
     public String path;
     protected FileManager fileManager;
+    protected String lastRegex;
 
     public static class PERMISSIONS {
         public static int a = 1;
@@ -159,16 +160,24 @@ public class FileElement {
 
     public void loadTree(String regex) throws IOException, Exceptions.ServerResponseException, Exceptions.FileTypeException{
         if(type.contentEquals(TypeChoices.FILE)) return;
+        if((lastRegex != null) && regex.contentEquals(lastRegex)) return;
         children = new ArrayList<>();
         ArrayList<FileElement> filesList = searchCurrentFolder();
         Pattern pattern = Pattern.compile(regex);
         for(FileElement fileElement : filesList){
             Matcher matcher = pattern.matcher(fileElement.name);
-            if(matcher.matches()) children.add(fileElement);
+            if(matcher.find() || fileElement.type.contentEquals(TypeChoices.DIRECTORY)) children.add(fileElement);
         }
+        ArrayList<FileElement> childrenToRemove = new ArrayList<>();
         for(FileElement child : children){
             child.loadTree(regex);
+            if(child.type.contentEquals(TypeChoices.FILE)) continue;
+            if(child.children.isEmpty()) childrenToRemove.add(child);
         }
+        for(FileElement child : childrenToRemove){
+            children.remove(child);
+        }
+        lastRegex = regex;
     }
 
     public void loadTree() throws IOException, Exceptions.ServerResponseException, Exceptions.FileTypeException{
@@ -176,7 +185,10 @@ public class FileElement {
     }
 
     protected String getFileTree(String regex, String indent, boolean reloadTree) throws IOException, Exceptions.ServerResponseException, Exceptions.FileTypeException{
-        if(reloadTree) loadTree(regex);
+        if(reloadTree){
+            lastRegex = null;
+            loadTree(regex);
+        }
         StringBuilder builder = new StringBuilder();
         builder.append(name);
         if(children == null) return builder.toString();
@@ -196,6 +208,32 @@ public class FileElement {
 
     public String getFileTree(boolean reloadTree) throws IOException, Exceptions.ServerResponseException, Exceptions.FileTypeException{
         return getFileTree(".*", reloadTree);
+    }
+
+    protected String appendDirToPath(String path, String dir){
+        if(path.lastIndexOf('/') == (path.length()-1)){
+            return path+dir;
+        }else return path+'/'+dir;
+    }
+
+    public void download(String regex) throws IOException,
+            Exceptions.ServerResponseException, Exceptions.FileTypeException, Exceptions.FileException {
+        loadTree(regex);
+        if(type.contentEquals(TypeChoices.FILE)){
+            fileManager.download(appendDirToPath(path, name));
+        }else {
+            fileManager.makeLocalDir(name);
+            fileManager.changeLocalDir(name);
+            for(FileElement child : children){
+                child.download(regex);
+            }
+            fileManager.changeLocalDir("..");
+        }
+    }
+
+    public void download() throws IOException, Exceptions.ServerResponseException,
+            Exceptions.FileTypeException, Exceptions.FileException {
+        download(".*");
     }
 
 }

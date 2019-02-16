@@ -185,6 +185,32 @@ public class FTPClient implements FileManager, SendCommand{
         return dataSocketController.saveBinaryData(filePath);
     }
 
+    protected void goToPrevLocalDir(){
+        int index = downloadDir.lastIndexOf('/');
+        downloadDir = downloadDir.substring(0, index);
+    }
+
+    protected String appendDirToPath(String path, String dir){
+        if(path.lastIndexOf('/') == (path.length()-1)){
+            return path+dir;
+        }else return path+'/'+dir;
+    }
+
+    public void changeLocalDir(String newDir){
+        if(newDir.contentEquals("..")){
+            goToPrevLocalDir();
+            return;
+        }
+        downloadDir = appendDirToPath(downloadDir, newDir);
+    }
+
+    public boolean makeLocalDir(String dirName){
+        String dirPath = appendDirToPath(downloadDir, dirName);
+        boolean fileCreated = new File(dirPath).mkdir();
+        if(debugMode) System.out.println("Trying to create new Dir - "+dirPath+" "+fileCreated);
+        return fileCreated;
+    }
+
     public void stopClient() throws IOException{
         controlSocket.close();
     }

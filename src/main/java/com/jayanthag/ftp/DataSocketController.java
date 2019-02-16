@@ -167,6 +167,12 @@ public class DataSocketController {
         return path[path.length-1];
     }
 
+    protected String appendDirToPath(String path, String dir){
+        if(path.lastIndexOf('/') == (path.length()-1)){
+            return path+dir;
+        }else return path+'/'+dir;
+    }
+
     public ServerResponse saveBinaryData(String filePath) throws IOException, Exceptions.ServerResponseException {
         ServerResponse response;
         try {
@@ -176,7 +182,7 @@ public class DataSocketController {
             sendPreliminaryCommand("RETR "+filePath);
             if(!passiveMode) acceptActiveConn();
             String fileName = parseFileName(filePath);
-            binaryOutputStream = new BufferedOutputStream(new FileOutputStream(downloadDir+fileName));
+            binaryOutputStream = new BufferedOutputStream(new FileOutputStream(appendDirToPath(downloadDir, fileName)));
             binaryInputStream = new BufferedInputStream(dataSocket.getInputStream());
             readAndStoreBinary();
         }finally {

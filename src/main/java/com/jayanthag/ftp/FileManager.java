@@ -14,4 +14,10 @@ public interface FileManager {
 
     public String pwd() throws IOException, Exceptions.ServerResponseException;
 
+    public boolean makeLocalDir(String dirPath);
+
+    public void changeLocalDir(String newDir);
+
+    public ServerResponse download(String filePath) throws IOException, Exceptions.ServerResponseException;
+
 }
