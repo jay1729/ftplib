@@ -3,6 +3,8 @@ package com.jayanthag.ftp;
 import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.jayanthag.ftp.Constants.CREDENTIALS;
 import com.jayanthag.ftp.models.FTPSocket;
@@ -151,6 +153,12 @@ public class FTPClient implements FileManager, SendCommand{
     }
 
     public ServerResponse cwd(String dirName) throws IOException, Exceptions.ServerResponseException{
+        if(dirName.contentEquals("//root")){
+            ServerResponse serverResponse = new ServerResponse();
+            serverResponse.responseCode = 200;
+            serverResponse.responseMessage = "";
+            return serverResponse;
+        }
         return sendFinalCommand("CWD "+dirName);
     }
 
@@ -167,6 +175,38 @@ public class FTPClient implements FileManager, SendCommand{
         Parser parser = getParserForMLSD();
         parser.setCWD(currentWorkingDir);
         return parser.parse(lines);
+    }
+
+    public ArrayList<FileElement> search(String regex, String path) throws IOException, Exceptions.ServerResponseException,
+            Exceptions.FileTypeException {
+        currentWorkingDir = path;
+        cwd(currentWorkingDir);
+        return search(regex);
+    }
+
+    public ArrayList<FileElement> search(String regex) throws IOException, Exceptions.ServerResponseException,
+            Exceptions.FileTypeException {
+        ArrayList<FileElement> allFiles = ls();
+        ArrayList<FileElement> output = new ArrayList<>();
+        for(FileElement file : allFiles){
+            file.loadTree(regex);
+            if((file.type.contentEquals(FileElement.TypeChoices.DIRECTORY)) && ((file.children == null) || (file.children.size() == 0))) continue;
+            if(file.type.contentEquals(FileElement.TypeChoices.FILE)){
+                Pattern pattern = Pattern.compile(regex);
+                Matcher matcher = pattern.matcher(file.name);
+                if(!matcher.find()) continue;
+            }
+            output.add(file);
+        }
+        return output;
+    }
+
+    public void regexDownload(String regex) throws IOException, Exceptions.ServerResponseException,
+            Exceptions.FileTypeException, Exceptions.FileException {
+        ArrayList<FileElement> files = search(regex);
+        for(FileElement file : files){
+            file.download(regex);
+        }
     }
 
     public void setDownloadDir(String downloadDir){
